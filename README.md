@@ -10,7 +10,7 @@ ShakeToLocate adds this feature to the [Mango](https://github.com/mangowm/mango)
 
 ## Demo
 
-https://github.com/user-attachments/assets/7d10b9eb-ba7e-43e9-a19c-3a9a3de27d37
+[https://github.com/user-attachments/assets/7d10b9eb-ba7e-43e9-a19c-3a9a3de27d37](https://github.com/user-attachments/assets/fa33d978-43ae-4b00-a71c-02fb291ea9e7)
 
 ## Install
 
