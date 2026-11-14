@@ -43,14 +43,15 @@ Add any of these to `~/.config/mango/config.conf` (a ready-to-copy list is insta
 `~/.local/share/mango-shake-to-locate/share/mango-shake-to-locate/shake-to-locate.conf.example`),
 then reload the Mango configuration. Defaults shown.
 
-| Option | Default | Meaning |
-|---|---|---|
-| `shake_to_locate` | `1` | `1` on, `0` off |
-| `shake_to_locate_sensitivity` | `1.0` | higher triggers with less movement (0.1 - 10) |
-| `shake_to_locate_min_distance` | `90` | pixels of travel within 500 ms before a shake counts (10 - 5000), divided by the sensitivity |
-| `shake_to_locate_intensity` | `1.0` | how fast and how big the cursor grows (0.1 - 20) |
-| `shake_to_locate_cooldown` | `1200` | minimum ms between two activations (0 - 60000) |
-| `shake_to_locate_max_size` | `0` | largest cursor size in px; `0` = no configured limit (a hard cap of 4096 px always applies) |
+| <br>**Option**                 | **Default** | **Meaning**                                                                                  |
+| ------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
+| `shake_to_locate`              | `1`         | `1` on, `0` off                                                                              |
+| `shake_to_locate_sensitivity`  | `1.0`       | higher triggers with less movement (0.1 - 10)                                                |
+| `shake_to_locate_min_distance` | `90`        | pixels of travel within 500 ms before a shake counts (10 - 5000), divided by the sensitivity |
+| `shake_to_locate_intensity`    | `1.0`       | controls cursor growth speed; higher values produce slower, more gradual growth (0.1 - 20)   |
+| `shake_to_locate_cooldown`     | `1200`      | minimum ms between two activations (0 - 60000)                                               |
+| `shake_to_locate_max_size`     | `0`         | largest cursor size in px; `0` = no configured limit (a hard cap of 4096 px always applies)  |
+
 
 A shake is also required to include at least 3 direction reversals, and it is ignored
 while moving or resizing a window, while the cursor is hidden, and while a client has
