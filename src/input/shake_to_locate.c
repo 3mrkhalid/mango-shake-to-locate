@@ -36,16 +36,17 @@
 #define SHAKE_MIN_STEP 2.0
 
 /* ---- animation */
-#define SHAKE_FRAME_INTERVAL_MS 8 /* timer period; redraws only on change */
-#define SHAKE_IDLE_MS 250         /* no motion for this long -> shrink */
-#define SHAKE_GROWTH_PX 50.0      /* px of shake energy per +1.0 scale */
-#define SHAKE_DISTANCE_DECAY_MS 700.0
-#define SHAKE_GROW_TAU_MS 70.0
-#define SHAKE_SHRINK_TAU_MS 110.0
-#define SHAKE_END_SCALE 1.02     /* when shrinking, stop below this */
-#define SHAKE_SOURCE_SIZE 256    /* ask the theme for its biggest bitmap */
-#define SHAKE_HARD_MAX_PX 4096.0 /* memory/CPU safety cap for one bitmap */
+#define SHAKE_FRAME_INTERVAL_MS 8
+#define SHAKE_IDLE_MS 300
+#define SHAKE_GROWTH_PX 100.0
+#define SHAKE_DISTANCE_DECAY_MS 900.0
+#define SHAKE_GROW_TAU_MS 180.0
+#define SHAKE_SHRINK_TAU_MS 250.0
+#define SHAKE_END_SCALE 1.02
+#define SHAKE_SOURCE_SIZE 256
+#define SHAKE_HARD_MAX_PX 4096.0
 #define SHAKE_NAME_LEN 64
+
 
 struct ShakeState {
   uint32_t window_start;
