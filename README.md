@@ -8,7 +8,9 @@ ShakeToLocate adds this feature to the [Mango](https://github.com/mangowm/mango)
 
 > **Build verified, runtime testing still needed.** The integration has been built successfully against the pinned Mango source on the author's machine. The feature's logic is also covered by automated tests. However, it has not yet been fully validated through real desktop use across different applications, monitors, and cursor configurations. See [Testing](#testing) before relying on it.
 
-*No screenshots or demo recording yet.*
+## Demo
+
+https://github.com/user-attachments/assets/7d10b9eb-ba7e-43e9-a19c-3a9a3de27d37
 
 ## Install
 
