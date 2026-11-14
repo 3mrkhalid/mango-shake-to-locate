@@ -1,34 +1,30 @@
-# Licensing
+## Licensing
 
-**Status: no `LICENSE` file is included yet, on purpose.** It needs one decision
-from the copyright holder of the ShakeToLocate code (see below).
+**Status:** No LICENSE file is included yet. The project is currently awaiting its initial license selection.
 
-## What is known
+### What is known
 
-- **Mango** is licensed **GPL-3.0-or-later** (Copyright 2025 DreamMaoMao; it also
-  carries the notices of dwl, tinywl, dwm and sway, see Mango's `LICENSE*` files).
-- `patches/0001-*.patch` modifies Mango source files and `src/input/shake_to_locate.c`
-  is compiled into the Mango binary. The binary this installer builds is therefore
-  a combined work and can only be distributed under GPL-3.0-or-later terms.
-  Anything you publish that contains Mango code (the patch hunks include Mango
-  context lines) must stay compatible with that.
-- Nothing in this repository copies Mango source files. The patch contains only the
-  small edits and their surrounding context lines.
+- Mango is licensed under GPL-3.0-or-later (Copyright 2025 DreamMaoMao; it also carries notices from dwl, tinywl, dwm, and sway in its LICENSE files).
+- ShakeToLocate is an independent project. The original ShakeToLocate code was provided by the project author, who owns the original code.
+- The project adds new functionality and integration for the Mango Wayland compositor through patches and supporting scripts.
+- `patches/0001-*.patch` modifies Mango source files, and `src/input/shake_to_locate.c` is compiled into the Mango binary.
+- The resulting binary is a combined work and must comply with the applicable GPL-3.0-or-later terms.
+- This repository does not copy complete Mango source files. It contains only the required patch changes and integration code.
 
-## What is not known
+### Project contributions
 
-- **Who holds the copyright of the original recovered ShakeToLocate code**, and
-  under which terms it was shared. The ZIP contained no license, copyright or
-  SPDX notice, and I did not assume one.
-- The contributions made while turning it into this project (continuous scaler,
-  configuration, integration patch, scripts, tests) were produced in a session
-  with an AI assistant for the person who requested them; that person decides how
-  to license them.
+The project author developed the additional functionality, including the continuous scaler, configuration system, Mango integration, installation scripts, and tests, with assistance from an AI coding assistant.
 
-## Recommended next step
+The project author is responsible for choosing the license for the contributions they own, subject to the rights of any third-party code included in the project.
 
-If the copyright holder agrees, release the project under **GPL-3.0-or-later**
-(the same as Mango): add the GPLv3 text as `LICENSE`, and put
-`SPDX-License-Identifier: GPL-3.0-or-later` at the top of the new source files.
-Until then, treat the repository as "all rights reserved" and do not publish it
-as open source.
+### Recommended next step
+
+The project author can release their original code and contributions under GPL-3.0-or-later, provided all third-party components and modifications are compatible with that license.
+
+Once the licensing decision is finalized:
+
+1. Add the GPL-3.0-or-later license text as `LICENSE`.
+2. Add `SPDX-License-Identifier: GPL-3.0-or-later` to the applicable source files.
+3. Preserve all required copyright and attribution notices from Mango and other third-party components.
+
+Until a license is added, the repository remains **All Rights Reserved** by default, except for third-party components governed by their respective licenses.
