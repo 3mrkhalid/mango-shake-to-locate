@@ -1,0 +1,309 @@
+diff --git a/docs/configuration/miscellaneous.md b/docs/configuration/miscellaneous.md
+index bcdf85ca..ca5bf6cc 100644
+--- a/docs/configuration/miscellaneous.md
++++ b/docs/configuration/miscellaneous.md
+@@ -23,6 +23,12 @@ description: Advanced settings for XWayland, focus behavior, and system integrat
+ | `warp_cursor` | `1` | Warp the cursor to the center of the window when focus changes via keyboard. |
+ | `cursor_hide_timeout` | `0` | Hide the cursor after `N` seconds of inactivity (`0` to disable). |
+ | `cursor_hide_on_keypress` | `0` | Hide the cursor on keypress. |
++| `shake_to_locate` | `1` | Enlarge the cursor temporarily when the mouse is shaken, to help find it (`0` to disable). |
++| `shake_to_locate_sensitivity` | `1.0` | Shake detection sensitivity (`0.1`-`10`). Higher triggers with less movement. |
++| `shake_to_locate_min_distance` | `90` | Pointer travel (px, within 500 ms) needed before a shake can trigger (`10`-`5000`). Divided by the sensitivity. |
++| `shake_to_locate_intensity` | `1.0` | How fast and how large the cursor grows while shaking (`0.1`-`20`). |
++| `shake_to_locate_cooldown` | `1200` | Minimum time (ms) between two activations (`0`-`60000`). |
++| `shake_to_locate_max_size` | `0` | Largest cursor size in pixels (`0` = no configured limit, hard safety cap 4096). |
+ | `drag_tile_to_tile` | `0` | Allow dragging a tiled window onto another to swap their positions. |
+ | `drag_tile_small` | `1` | Allow dragging a tiled window temporarily to small size.|
+ | `drag_corner` | `3` | Corner for drag-to-tile detection (0: none, 1–3: corners, 4: auto-detect). |
+diff --git a/include/mango/config/parse.h b/include/mango/config/parse.h
+index e7d6b863..820d8df2 100644
+--- a/include/mango/config/parse.h
++++ b/include/mango/config/parse.h
+@@ -406,6 +406,13 @@ typedef struct {
+ 	uint32_t cursor_hide_timeout;
+ 	uint32_t cursor_hide_on_keypress;
+ 
++	uint32_t shake_to_locate;
++	float shake_to_locate_sensitivity;
++	uint32_t shake_to_locate_min_distance;
++	float shake_to_locate_intensity;
++	uint32_t shake_to_locate_cooldown;
++	uint32_t shake_to_locate_max_size;
++
+ 	uint32_t axis_bind_apply_timeout;
+ 	uint32_t focus_on_activate;
+ 	int32_t idleinhibit_ignore_visible;
+diff --git a/src/config/option_defs.c b/src/config/option_defs.c
+index f4f65e0e..9a74c014 100644
+--- a/src/config/option_defs.c
++++ b/src/config/option_defs.c
+@@ -510,6 +510,18 @@ bool parse_option(Config *config, char *key, char *value, int line_number) {
+ 		config->cursor_hide_timeout = atoi(value);
+ 	} else if (strcmp(key, "cursor_hide_on_keypress") == 0) {
+ 		config->cursor_hide_on_keypress = atoi(value);
++	} else if (strcmp(key, "shake_to_locate") == 0) {
++		config->shake_to_locate = atoi(value);
++	} else if (strcmp(key, "shake_to_locate_sensitivity") == 0) {
++		config->shake_to_locate_sensitivity = atof(value);
++	} else if (strcmp(key, "shake_to_locate_min_distance") == 0) {
++		config->shake_to_locate_min_distance = atoi(value);
++	} else if (strcmp(key, "shake_to_locate_intensity") == 0) {
++		config->shake_to_locate_intensity = atof(value);
++	} else if (strcmp(key, "shake_to_locate_cooldown") == 0) {
++		config->shake_to_locate_cooldown = atoi(value);
++	} else if (strcmp(key, "shake_to_locate_max_size") == 0) {
++		config->shake_to_locate_max_size = atoi(value);
+ 	} else if (strcmp(key, "axis_bind_apply_timeout") == 0) {
+ 		config->axis_bind_apply_timeout = atoi(value);
+ 	} else if (strcmp(key, "focus_on_activate") == 0) {
+@@ -2511,6 +2523,13 @@ void set_value_default() {
+ 	config.cursor_hide_timeout = 0;
+ 	config.cursor_hide_on_keypress = 0;
+ 
++	config.shake_to_locate = 1;
++	config.shake_to_locate_sensitivity = 1.0f;
++	config.shake_to_locate_min_distance = 90;
++	config.shake_to_locate_intensity = 1.0f;
++	config.shake_to_locate_cooldown = 1200;
++	config.shake_to_locate_max_size = 0;
++
+ 	config.warpcursor = 1;
+ 	config.drag_corner = 3;
+ 	config.drag_warp_cursor = 1;
+@@ -2858,6 +2877,17 @@ void override_config(void) {
+ 		CLAMP_INT(config.cursor_hide_timeout, 0, 36000);
+ 	config.cursor_hide_on_keypress =
+ 		CLAMP_INT(config.cursor_hide_on_keypress, 0, 1);
++	config.shake_to_locate = CLAMP_INT(config.shake_to_locate, 0, 1);
++	config.shake_to_locate_sensitivity =
++		CLAMP_FLOAT(config.shake_to_locate_sensitivity, 0.1f, 10.0f);
++	config.shake_to_locate_min_distance =
++		CLAMP_INT(config.shake_to_locate_min_distance, 10, 5000);
++	config.shake_to_locate_intensity =
++		CLAMP_FLOAT(config.shake_to_locate_intensity, 0.1f, 20.0f);
++	config.shake_to_locate_cooldown =
++		CLAMP_INT(config.shake_to_locate_cooldown, 0, 60000);
++	config.shake_to_locate_max_size =
++		CLAMP_INT(config.shake_to_locate_max_size, 0, 4096);
+ 	config.single_scratchpad = CLAMP_INT(config.single_scratchpad, 0, 1);
+ 	config.repeat_rate = CLAMP_INT(config.repeat_rate, 1, 1000);
+ 	config.repeat_delay = CLAMP_INT(config.repeat_delay, 1, 20000);
+diff --git a/src/config/reapply.c b/src/config/reapply.c
+index 19c0d95e..56d2575c 100644
+--- a/src/config/reapply.c
++++ b/src/config/reapply.c
+@@ -24,6 +24,7 @@
+ #include "mango/input/device.h"
+ #include "mango/input/keyboard.h"
+ #include "mango/input/pointer.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/ipc/ipc.h"
+ #include "mango/layout/arrange.h"
+ #include "mango/layout/layout.h"
+@@ -325,6 +326,8 @@ void reapply_cursor_style(void) {
+ 		wl_event_source_timer_update(server.hide_cursor_source,
+ 									 config.cursor_hide_timeout * 1000);
+ 	}
++
++	shake_to_locate_reapply();
+ }
+ 
+ void reapply_keyboard(void) {
+diff --git a/src/dispatch/bind.c b/src/dispatch/bind.c
+index 87f29008..b4a60605 100644
+--- a/src/dispatch/bind.c
++++ b/src/dispatch/bind.c
+@@ -11,6 +11,7 @@
+ #include "mango/input/device.h"
+ #include "mango/input/keyboard.h"
+ #include "mango/input/pointer.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/ipc/ipc.h"
+ #include "mango/layout/arrange.h"
+ #include "mango/layout/dwindle.h"
+@@ -2395,8 +2396,7 @@ void set_overview(const Arg *arg, bool enter, Monitor *m) {
+ 		if (server.cursor_hidden) {
+ 			pointer_cursor_activity();
+ 		} else {
+-			wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-								   "default");
++			shake_to_locate_set_cursor("default");
+ 		}
+ 
+ 		wl_list_for_each(c, &server.clients, link) {
+diff --git a/src/input/pointer.c b/src/input/pointer.c
+index d56f969f..005a16fa 100644
+--- a/src/input/pointer.c
++++ b/src/input/pointer.c
+@@ -8,6 +8,7 @@
+ #include "mango/dispatch/bind.h"
+ #include "mango/input/device.h"
+ #include "mango/input/keyboard.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/input/trackpad.h"
+ #include "mango/ipc/ipc.h"
+ #include "mango/layout/arrange.h"
+@@ -504,8 +505,7 @@ void handle_request_set_cursor_shape(struct wl_listener *listener, void *data) {
+ 		last_cursor.shape = event->shape;
+ 		last_cursor.surface = NULL;
+ 		if (!server.cursor_hidden)
+-			wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-								   wlr_cursor_shape_v1_name(event->shape));
++			shake_to_locate_set_cursor(wlr_cursor_shape_v1_name(event->shape));
+ 	}
+ }
+ void pointer_set_accel(struct libinput_device *device, bool natural_scrolling,
+@@ -928,8 +928,7 @@ static void pointer_update_resize_cursor(Client *c,
+ 		/* The strip owns the cursor while it is hovered. Re-applying is a
+ 		 * no-op when unchanged (wlr_cursor_set_xcursor compares names), so
+ 		 * this also repairs the image after an idle hide. */
+-		wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-							   resize_cursor_name(edge, floating));
++		shake_to_locate_set_cursor(resize_cursor_name(edge, floating));
+ 	} else if (changed && previous && !server.seat->drag) {
+ 		/* Leaving the strip hands the cursor back to the client: drop the
+ 		 * pointer focus so pointer_focus() re-enters and the client sends
+@@ -1021,7 +1020,7 @@ bool pointer_begin_move_resize(Client *gc, uint32_t mode, double x, double y,
+ 	case CurMove:
+ 		server.grab_offset_x = (int32_t)(x - gc->geom.x);
+ 		server.grab_offset_y = (int32_t)(y - gc->geom.y);
+-		wlr_cursor_set_xcursor(server.cursor, server.cursor_manager, "grab");
++		shake_to_locate_set_cursor("grab");
+ 		break;
+ 	case CurResize:
+ 		if (gc->isfloating) {
+@@ -1062,12 +1061,10 @@ bool pointer_begin_move_resize(Client *gc, uint32_t mode, double x, double y,
+ 			server.grab_offset_x = grab_x;
+ 			server.grab_offset_y = grab_y;
+ 
+-			wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-								   resize_cursor_name(resize_edge, true));
++			shake_to_locate_set_cursor(resize_cursor_name(resize_edge, true));
+ 		} else {
+-			wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-								   edge ? resize_cursor_name(edge, false)
+-										: "grab");
++			shake_to_locate_set_cursor(edge ? resize_cursor_name(edge, false)
++											: "grab");
+ 		}
+ 		break;
+ 	}
+@@ -1250,6 +1247,7 @@ void pointer_process_motion(uint32_t time, struct wlr_input_device *device,
+ 		}
+ 
+ 		wlr_cursor_move(server.cursor, device, dx, dy);
++		shake_to_locate_motion(time, dx, dy);
+ 		pointer_cursor_activity();
+ 		wlr_idle_notifier_v1_notify_activity(server.idle_notifier, server.seat);
+ 
+@@ -1379,7 +1377,7 @@ void pointer_process_motion(uint32_t time, struct wlr_input_device *device,
+ 	 * to a default. This is what makes the cursor image appear when you
+ 	 * move it off of a client or over its border. */
+ 	if (!surface && !server.seat->drag && !server.cursor_hidden)
+-		wlr_cursor_set_xcursor(server.cursor, server.cursor_manager, "default");
++		shake_to_locate_set_cursor("default");
+ 
+ 	if (c && c->mon && !c->animation.running &&
+ 		(INSIDEMON(c) || !ISSCROLLTILED(c))) {
+@@ -1552,6 +1550,7 @@ void handle_request_set_cursor(struct wl_listener *listener, void *data) {
+ 			wl_signal_add(&event->surface->events.destroy,
+ 						  &server.last_cursor_surface_destroy_listener);
+ 
++		shake_to_locate_set_client_cursor();
+ 		if (!server.cursor_hidden)
+ 			wlr_cursor_set_surface(server.cursor, event->surface,
+ 								   event->hotspot_x, event->hotspot_y);
+@@ -1578,11 +1577,12 @@ void pointer_cursor_activity(void) {
+ 	server.cursor_hidden = false;
+ 
+ 	if (last_cursor.shape)
+-		wlr_cursor_set_xcursor(server.cursor, server.cursor_manager,
+-							   wlr_cursor_shape_v1_name(last_cursor.shape));
+-	else if (last_cursor.surface)
++		shake_to_locate_set_cursor(wlr_cursor_shape_v1_name(last_cursor.shape));
++	else if (last_cursor.surface) {
++		shake_to_locate_set_client_cursor();
+ 		wlr_cursor_set_surface(server.cursor, last_cursor.surface,
+ 							   last_cursor.hotspot_x, last_cursor.hotspot_y);
++	}
+ }
+ 
+ int32_t pointer_hide_cursor(void *data) {
+@@ -1603,7 +1603,7 @@ void pointer_warp_to_client(const Client *c) {
+ void pointer_warp_to_monitor(Monitor *m) {
+ 	wlr_cursor_warp_closest(server.cursor, NULL, m->w.x + m->w.width / 2.0,
+ 							m->w.y + m->w.height / 2.0);
+-	wlr_cursor_set_xcursor(server.cursor, server.cursor_manager, "default");
++	shake_to_locate_set_cursor("default");
+ 	pointer_cursor_activity();
+ }
+ 
+diff --git a/src/input/tablet.c b/src/input/tablet.c
+index 6e318b88..54c652cb 100644
+--- a/src/input/tablet.c
++++ b/src/input/tablet.c
+@@ -4,6 +4,7 @@
+ #include "mango/common/server.h"
+ #include "mango/common/util.h"
+ #include "mango/input/pointer.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/ipc/ipc.h"
+ #include "mango/manage/client.h"
+ #include "mango/manage/layer.h"
+@@ -208,6 +209,7 @@ void handle_tablet_tool_set_cursor(struct wl_listener *listener, void *data) {
+ 	if (focused_client != event->seat_client)
+ 		return;
+ 
++	shake_to_locate_set_client_cursor();
+ 	wlr_cursor_set_surface(server.cursor, event->surface, event->hotspot_x,
+ 						   event->hotspot_y);
+ }
+diff --git a/src/main.c b/src/main.c
+index ee71507e..4e92ef75 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -21,6 +21,7 @@
+ #include "mango/input/device.h"
+ #include "mango/input/keyboard.h"
+ #include "mango/input/pointer.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/input/tablet.h"
+ #include "mango/input/trackpad.h"
+ #include "mango/ipc/ipc.h"
+@@ -257,6 +258,7 @@ void cleanup(void) {
+ 		kill(-server.child_pid, SIGTERM);
+ 		waitpid(server.child_pid, NULL, 0);
+ 	}
++	shake_to_locate_finish();
+ 	wlr_xcursor_manager_destroy(server.cursor_manager);
+ 
+ 	keyboard_group_destroy(&server.keyboard_group->destroy, NULL);
+@@ -796,6 +798,7 @@ void setup(void) {
+ 	server.hide_cursor_source =
+ 		wl_event_loop_add_timer(wl_display_get_event_loop(server.display),
+ 								pointer_hide_cursor, server.cursor);
++	shake_to_locate_init();
+ 	/*
+ 	 * Configures a seat, which is a single "seat" at which a user sits and
+ 	 * operates the computer. This conceptually includes up to one keyboard,
+diff --git a/src/manage/misc.c b/src/manage/misc.c
+index 337c9612..0e7318c5 100644
+--- a/src/manage/misc.c
++++ b/src/manage/misc.c
+@@ -5,6 +5,7 @@
+ #include "mango/common/util.h"
+ #include "mango/data/static_keymap.h"
+ #include "mango/input/pointer.h"
++#include "mango/input/shake_to_locate.h"
+ #include "mango/layout/arrange.h"
+ #include "mango/manage/client.h"
+ #include "mango/manage/layer.h"
+@@ -479,7 +480,7 @@ void session_lock_cleanup(SessionLock *lock, int32_t unlock) {
+ 		return;
+ 
+ 	pointer_cursor_activity();
+-	wlr_cursor_set_xcursor(server.cursor, server.cursor_manager, "default");
++	shake_to_locate_set_cursor("default");
+ 	client_focus(client_focus_top(server.selected_monitor), 1);
+ 	pointer_process_motion(0, NULL, 0, 0, 0, 0);
+ }

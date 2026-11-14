@@ -1,0 +1,22 @@
+# ShakeToLocate - optional settings for ~/.config/mango/config.conf
+# Everything below shows the DEFAULT value. You only need the lines you want to change.
+
+# 1 = on, 0 = off
+shake_to_locate=1
+
+# Higher = triggers with less movement (0.1 - 10)
+shake_to_locate_sensitivity=1.0
+
+# Pointer travel in pixels, within 500 ms, needed before a shake can trigger (10 - 5000).
+# The value is divided by the sensitivity above.
+shake_to_locate_min_distance=90
+
+# How fast and how large the cursor grows while you keep shaking (0.1 - 20)
+shake_to_locate_intensity=1.0
+
+# Minimum time between two activations, in milliseconds (0 - 60000)
+shake_to_locate_cooldown=1200
+
+# Largest cursor size in pixels. 0 = no configured limit (a hard safety cap of
+# 4096 px always applies). Very large sizes cost CPU while they are animated.
+shake_to_locate_max_size=0

@@ -1,0 +1,4 @@
+tests/shake-test
+tests/scaler-test
+*.o
+build/
