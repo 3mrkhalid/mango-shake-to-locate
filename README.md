@@ -1,157 +1,265 @@
 # ShakeToLocate for Mango
 
-Shake the mouse and the cursor grows so you can find it, then shrinks back when
-you stop. It is the same idea as "shake to locate pointer" on macOS or KDE.
+Shake your mouse and the cursor grows so you can find it, then smoothly shrinks back when you stop. Inspired by the "Shake to Locate Pointer" feature in macOS and KDE.
 
-This project adds the feature to the [Mango](https://github.com/mangowm/mango)
-Wayland compositor. You do not edit any source code: run one script.
+ShakeToLocate adds this feature to the [Mango](https://github.com/mangowm/mango) Wayland compositor. It integrates directly with Mango through a small source patch and an automated installer.
 
-> **Status: untested on a real Mango build.** The code was written against the actual
-> Mango source (commit `ba0c8d9`) and its logic is covered by automated tests, but it
-> has **not been compiled against Mango/wlroots 0.20 or run on a real desktop** by the
-> author of this package. Read [Testing](#testing) before relying on it.
+---
 
-*No screenshots or demo recording yet: none could be produced without a running Mango.*
+> **Build verified, runtime testing still needed.** The integration has been built successfully against the pinned Mango source on the author's machine. The feature's logic is also covered by automated tests. However, it has not yet been fully validated through real desktop use across different applications, monitors, and cursor configurations. See [Testing](#testing) before relying on it.
+
+*No screenshots or demo recording yet.*
 
 ## Install
 
 ```sh
 git clone https://github.com/3mrkhalid/mango-shake-to-locate
 cd mango-shake-to-locate
-./install.sh --check-only     # lists missing dependencies, changes nothing
-./install.sh                  # builds and installs
+
+./install.sh --check-only     # Check dependencies without changing anything
+./install.sh                  # Build and install
 ```
 
-The installer builds a **separate copy** of Mango and installs it into
-`~/.local/share/mango-shake-to-locate` with a launcher `~/.local/bin/mango-shake`.
-Your existing Mango and your configuration are **never modified**.
+The installer builds a **separate copy** of Mango and installs it into:
 
-Start it from a TTY (log out of your current Mango session first):
+```text
+~/.local/share/mango-shake-to-locate
+```
+
+It also creates a launcher at:
+
+```text
+~/.local/bin/mango-shake
+```
+
+Your existing Mango executable and configuration are **not modified** by the installer.
+
+## Run ShakeToLocate
+
+Log out of your current Mango session first, then start the new build from a TTY:
+
+```sh
+~/.local/share/mango-shake-to-locate/bin/mango
+```
+
+Alternatively, if `~/.local/bin` is in your `PATH`, you can use the launcher:
 
 ```sh
 mango-shake
 ```
 
-To use it from a display manager, create a session entry whose `Exec` is
-`~/.local/share/mango-shake-to-locate/bin/mango` (use the absolute path).
+To use it from a display manager, create a session entry whose `Exec` points to the absolute path of the installed executable:
 
-It is enabled by default. Shake the mouse left and right quickly.
+```text
+/home/your-user/.local/share/mango-shake-to-locate/bin/mango
+```
+
+Replace `/home/your-user` with your actual home directory.
+
+ShakeToLocate is enabled by default. Move the mouse quickly from side to side to activate it.
+
+## Use as your default Mango
+
+If you want the ShakeToLocate build to launch whenever you run the regular `mango` command, you can replace your currently installed Mango executable with the new build.
+
+This is optional. The normal installation does not replace your existing Mango executable.
+
+**1. Find your current Mango executable:**
+
+```bash
+MANGO_BIN="$(command -v mango)"
+echo "$MANGO_BIN"
+readlink -f "$MANGO_BIN"
+```
+
+Make sure this points to the Mango executable you actually want to replace.
+
+**2. Back up the original executable:**
+
+```bash
+sudo cp -L -- "$MANGO_BIN" "$MANGO_BIN.backup"
+```
+
+The `-L` option follows a symbolic link and backs up the executable it points to, rather than saving the link itself.
+
+**Important:** Verify that the resolved executable is your original Mango build before creating the backup. If it already points to the ShakeToLocate installation, do not use it as your original backup.
+
+**3. Replace it with the ShakeToLocate build:**
+
+```bash
+sudo rm -f -- "$MANGO_BIN"
+
+sudo install -m 755 \
+  ~/.local/share/mango-shake-to-locate/bin/mango \
+  "$MANGO_BIN"
+```
+
+**4. Log out and start Mango again.**
+
+Your regular Mango command will now launch the ShakeToLocate build:
+
+```bash
+mango
+```
+
+**Restore your original Mango executable:**
+
+```bash
+sudo rm -f -- "$MANGO_BIN"
+
+sudo install -m 755 \
+  "$MANGO_BIN.backup" \
+  "$MANGO_BIN"
+```
+
+This method replaces the installed executable; it does not merge the changes into your original Mango source repository.
+
+Keep your backup until you are sure everything works. The replacement is based on the pinned Mango commit documented below.
 
 ## Configure
 
-Add any of these to `~/.config/mango/config.conf` (a ready-to-copy list is installed in
-`~/.local/share/mango-shake-to-locate/share/mango-shake-to-locate/shake-to-locate.conf.example`),
-then reload the Mango configuration. Defaults shown.
+Add any of these options to:
 
-| <br>**Option**                 | **Default** | **Meaning**                                                                                  |
+```text
+~/.config/mango/config.conf
+```
+
+A ready-to-copy configuration file is installed at:
+
+```text
+~/.local/share/mango-shake-to-locate/share/mango-shake-to-locate/shake-to-locate.conf.example
+```
+
+Reload the Mango configuration after changing the options.
+
+| **Option** | **Default** | **Meaning** |
 | ------------------------------ | ----------- | -------------------------------------------------------------------------------------------- |
-| `shake_to_locate`              | `1`         | `1` on, `0` off                                                                              |
-| `shake_to_locate_sensitivity`  | `1.0`       | higher triggers with less movement (0.1 - 10)                                                |
-| `shake_to_locate_min_distance` | `90`        | pixels of travel within 500 ms before a shake counts (10 - 5000), divided by the sensitivity |
-| `shake_to_locate_intensity`    | `1.0`       | controls cursor growth speed; higher values produce slower, more gradual growth (0.1 - 20)   |
-| `shake_to_locate_cooldown`     | `1200`      | minimum ms between two activations (0 - 60000)                                               |
-| `shake_to_locate_max_size`     | `0`         | largest cursor size in px; `0` = no configured limit (a hard cap of 4096 px always applies)  |
+| `shake_to_locate` | `1` | `1` enables the feature, `0` disables it |
+| `shake_to_locate_sensitivity` | `1.0` | Higher values trigger with less movement (0.1 - 10) |
+| `shake_to_locate_min_distance` | `90` | Pixels of travel within 500 ms before a shake counts (10 - 5000), adjusted by sensitivity |
+| `shake_to_locate_intensity` | `1.0` | Controls cursor growth speed; higher values make the cursor grow faster (0.1 - 20) |
+| `shake_to_locate_cooldown` | `1200` | Minimum milliseconds between two activations (0 - 60000) |
+| `shake_to_locate_max_size` | `0` | Largest cursor size in pixels; `0` means no configured limit (a hard cap of 4096 px always applies) |
 
+A valid shake must include at least **3 direction reversals**.
 
-A shake is also required to include at least 3 direction reversals, and it is ignored
-while moving or resizing a window, while the cursor is hidden, and while a client has
-set its own cursor image (games, drawing apps).
+The effect is ignored while:
+
+- Moving or resizing a window.
+- The cursor is hidden.
+- A Wayland client has set its own cursor image, such as some games and drawing applications.
 
 ## Uninstall
 
+From the cloned project directory:
+
 ```sh
-./uninstall.sh            # removes the install directory, launcher and build cache
-./uninstall.sh --dry-run  # only shows what would be removed
+./uninstall.sh            # Remove the installation, launcher and build cache
+./uninstall.sh --dry-run  # Preview what would be removed
 ```
 
-It only deletes directories that carry this installer's marker file and never touches
-`~/.config/mango`.
+The uninstaller only deletes directories containing this installer's marker file. It never touches:
+
+```text
+~/.config/mango
+```
+
+If you manually replaced your default Mango executable using the instructions above, restore your original executable before uninstalling the ShakeToLocate installation.
 
 ## Requirements and supported versions
 
-- Supported: Mango commit **`ba0c8d9859f9142d1cfcc61f39f289c545661fb9`** (0.18.5 plus 15
-  commits, from `DreamMaoMao/mangowc`, which is also published as `mangowm/mango`).
-  This is the only version the integration patch is written and checked against. The
-  installer stops with a clear message if the patch does not apply.
-- Build tools: `meson`, `ninja`, a C compiler, `pkg-config`, `patch`, `wayland-scanner`, `git`.
-- Libraries (as required by that Mango commit): wayland >= 1.23.1, **wlroots 0.20**,
-  **scenefx 0.5**, libdrm, xkbcommon, libinput >= 1.27.1, pixman, pcre2, cjson,
-  pangocairo, and xcb/xcb-icccm/xcb-randr for XWayland (or pass `--no-xwayland`).
-  `./install.sh --check-only` reports exactly which are missing.
-- Mango's own dependency/build notes: its `docs/installation.md`.
+- **Supported Mango version:** Commit `ba0c8d9859f9142d1cfcc61f39f289c545661fb9` (Mango 0.18.5 plus 15 commits, from `DreamMaoMao/mangowc`, also published as `mangowm/mango`).
+- This is the only version the integration patch is written and checked against. The installer stops with a clear message if the patch does not apply.
+- **Build tools:** `meson`, `ninja`, a C compiler, `pkg-config`, `patch`, `wayland-scanner`, and `git`.
+- **Libraries:** Wayland >= 1.23.1, **wlroots 0.20**, **scenefx 0.5**, libdrm, xkbcommon, libinput >= 1.27.1, pixman, pcre2, cjson, pangocairo, and xcb/xcb-icccm/xcb-randr for XWayland.
+- You can pass `--no-xwayland` to disable XWayland support during the build.
+- Run `./install.sh --check-only` to check which dependencies are missing.
+- For Mango's own dependency and build instructions, see its `docs/installation.md`.
 
 ## How it works
 
-See [docs/INTEGRATION.md](docs/INTEGRATION.md) for every Mango source change and why.
-In short: relative pointer motion is fed to a detector (distance, direction reversals,
-cooldown). When it fires, a timer scales the theme's large cursor bitmap with bilinear
-interpolation to any size and hands it to wlroots as a buffer, so growth and shrinking
-are continuous instead of stepping through preloaded cursor sizes. When the animation
-ends the normal themed cursor is restored.
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for the Mango source changes and the reasons behind them.
+
+In short:
+
+1. Relative pointer motion is passed to a shake detector.
+2. The detector checks movement distance, direction reversals, and cooldown.
+3. When a shake is detected, a timer drives the cursor animation.
+4. The cursor's large theme bitmap is scaled using bilinear interpolation.
+5. The resulting image is provided to wlroots as a buffer.
+6. When the animation ends, the normal themed cursor is restored.
+
+Instead of stepping through a few preloaded cursor sizes, the feature continuously scales the cursor, allowing smooth growth and shrinking.
 
 ## Limitations
 
-- **Single build, pinned commit.** Other Mango versions are not supported.
-- **Software scaling on the CPU.** Cost grows with cursor size (measured on the
-  author's build machine: about 2 ms/frame at 1024 px, 10 ms at 2048 px, 44 ms at
-  4096 px). Because Mango is single-threaded, very large sizes can make the compositor
-  feel sluggish while the cursor is huge. Use `shake_to_locate_max_size` to limit it.
-- Very large cursors cannot use the hardware cursor plane, so wlroots draws them in the
-  compositor (software cursor).
-- The theme's 256 px bitmap is loaded on the first shake (a short pause once), and kept
-  in memory until the config is reloaded.
-- At the very start and end of the animation the cursor is downscaled from the large
-  bitmap with plain bilinear filtering, which can look slightly rougher than the theme's
-  own small cursor for a few frames.
-- Client-provided cursors (a Wayland client drawing its own cursor surface) are not
-  enlarged.
-- Animated cursors are shown as their first frame while enlarged.
-- No screenshots/demo are included.
+- **Single supported build:** Only the pinned Mango commit is currently supported.
+- **CPU-based scaling:** Cursor scaling is performed on the CPU. The measured cost on the author's build machine was approximately:
+  - 2 ms/frame at 1024 px.
+  - 10 ms/frame at 2048 px.
+  - 44 ms/frame at 4096 px.
+
+  Mango is single-threaded, so very large cursor sizes may make the compositor feel sluggish while the cursor is enlarged. Use `shake_to_locate_max_size` to limit the maximum size.
+- **Software cursor:** Very large cursors cannot use the hardware cursor plane, so wlroots draws them in the compositor.
+- **First-shake loading:** The theme's 256 px bitmap is loaded on the first shake and kept in memory until the configuration is reloaded. This may cause a short pause the first time.
+- **Scaling quality:** At the beginning and end of the animation, the cursor is downscaled from the large bitmap using bilinear filtering. This can look slightly rougher than the theme's original small cursor for a few frames.
+- **Client-provided cursors:** Wayland clients drawing their own cursor surfaces are not enlarged.
+- **Animated cursors:** Animated cursor themes are displayed using their first frame while enlarged.
+- **No screenshots or demo recording** are currently included.
 
 ## Testing
 
-What was actually done (on the packaging machine, which has no wlroots/Mango dependencies):
+### What has been tested
 
-- The integration patch applies cleanly to the pinned Mango commit (`patch --dry-run`,
-  `git apply --check`), and the installer's fetch → patch → copy stage ran end to end.
-- `make test` builds the module against **stub** wlroots/Mango headers
-  (`tests/stubs`) with `-Wall -Wextra -Werror` and AddressSanitizer + UBSan and runs
-  235 checks: detection, cooldown, config options, continuous growth, restore (also
-  when wlroots keeps its cursor name cached), client-cursor takeover, shape changes,
-  output scale changes, reapply mid-animation, finish/teardown, and buffer
-  create/destroy balance. A mutation check confirmed that breaking the restore and the
-  buffer release makes these tests fail. A second test compares the scaler with a
-  floating-point bilinear reference (worst error 2.4 of 255).
-- The stubs model how I expect wlroots to behave (buffer locking, cursor-name
-  de-duplication, scale lookup). **They are not wlroots.**
+- The integration patch applies cleanly to the pinned Mango commit using `patch --dry-run` and `git apply --check`.
+- The installer's fetch, patch, build, and installation process has been run successfully on the author's machine.
+- `make test` builds the module against **stub** wlroots/Mango headers in `tests/stubs`, using `-Wall -Wextra -Werror`, AddressSanitizer, and UndefinedBehaviorSanitizer.
+- The automated test suite runs 235 checks covering:
+  - Shake detection and cooldown.
+  - Configuration options.
+  - Continuous cursor growth.
+  - Cursor restoration, including when wlroots keeps its cursor name cached.
+  - Client-cursor takeover.
+  - Cursor shape changes.
+  - Output scale changes.
+  - Reapplying configuration during animation.
+  - Cleanup and teardown.
+  - Buffer creation and destruction balance.
+- A mutation check confirmed that breaking cursor restoration or buffer release causes the tests to fail.
+- A second test compares the scaler against a floating-point bilinear reference, with a worst error of 2.4 out of 255.
 
-What was **not** done, and must be done on a machine with the dependencies:
+**Important:** The stubs model expected wlroots behavior, including buffer locking, cursor-name deduplication, and scale lookup. They are not the real wlroots implementation.
 
-1. Build against the real Mango/wlroots 0.20/scenefx 0.5 (`./install.sh`).
-2. Run it: shake, check growth, shrink and that the normal cursor comes back.
-3. Test with two or more monitors, with different output scales (for example 1x and
-   2x), and move the pointer across monitors while it is enlarged.
-4. Check the cursor over client cursors (text fields, resize edges), while dragging
-   windows, with a game or a client that hides the cursor, and after reloading the
-   configuration or changing the cursor theme/size.
+### What still needs real-world testing
 
-Please report results (and your Mango/wlroots versions) so this section can be updated.
+The following checks should be performed on a machine running the supported Mango and wlroots versions:
+
+1. Run ShakeToLocate and verify that the cursor grows, shrinks, and returns to its normal appearance.
+2. Test with two or more monitors using different output scales, such as 1x and 2x. Move the pointer between monitors while the cursor is enlarged.
+3. Check cursor behavior over text fields, resize edges, and other client-provided cursor surfaces.
+4. Test while dragging windows, using games, and interacting with clients that hide the cursor.
+5. Reload the configuration and change the cursor theme or size while testing the feature.
+
+Please report your results, including your Mango and wlroots versions, so this section can be updated.
 
 ## Repository layout
 
-```
-install.sh / uninstall.sh   user-facing scripts
-scripts/common.sh           shared helpers
-src/, include/              the ShakeToLocate module (new Mango files)
-patches/                    edits to existing Mango files (applied by install.sh)
-config/                     example configuration
-tests/                      stub-based tests (make test)
-docs/INTEGRATION.md         what changes in Mango and why
-contrib/evdev-prototype/    the original standalone C++ evdev prototype, kept untouched,
-                            not part of the Mango feature and not installed
-LICENSING.md                licensing situation (no LICENSE file yet)
+```text
+install.sh / uninstall.sh   User-facing installation scripts
+scripts/common.sh           Shared helper functions
+src/, include/              ShakeToLocate module (new Mango files)
+patches/                    Changes to existing Mango files
+config/                     Example configuration
+tests/                      Stub-based tests (make test)
+docs/INTEGRATION.md         Mango integration details
+contrib/evdev-prototype/     Original standalone C++ evdev prototype
+                            Kept untouched; not part of the Mango feature
+                            and not installed
+LICENSING.md                Licensing information
 ```
 
 ## License
 
-See [LICENSING.md](LICENSING.md). A license file has deliberately not been added yet.
+See [LICENSING.md](LICENSING.md) for the current licensing situation.
+
+A `LICENSE` file has deliberately not been added yet.
