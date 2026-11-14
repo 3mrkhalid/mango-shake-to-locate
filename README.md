@@ -16,7 +16,7 @@ Wayland compositor. You do not edit any source code: run one script.
 ## Install
 
 ```sh
-git clone <this repository> mango-shake-to-locate
+git clone https://github.com/3mrkhalid/mango-shake-to-locate
 cd mango-shake-to-locate
 ./install.sh --check-only     # lists missing dependencies, changes nothing
 ./install.sh                  # builds and installs
